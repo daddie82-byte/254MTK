@@ -1,0 +1,13 @@
+[package]
+name = "flashtool-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "flashtool"
+path = "src/main.rs"
+
+[dependencies]
+flashtool-core = { path = "../flashtool-core" }
+flashtool-mtk  = { path = "../flashtool-mtk" }
+clap = { version = "4", features = ["derive"] }
