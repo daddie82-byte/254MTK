@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "crates/flashtool-core",
+    "crates/flashtool-mtk",
+    "crates/flashtool-cli",
+]
+resolver = "2"
