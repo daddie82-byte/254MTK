@@ -34,28 +34,38 @@ mod loader_tests {
 
 #[cfg(test)]
 mod python_runner_tests {
-    use crate::python_runner::{ensure_python_env, marker_path, py_dir, python_exe, mtk_py_path};
+    use crate::python_runner::{ensure_python_env, py_dir, python_exe, mtk_py_path};
+    use flashtool_core::Error;
 
-    /// Verify that ensure_python_env extracts files to temp directory.
+    /// When the placeholder asset is embedded, ensure_python_env must return a
+    /// PythonEnv error pointing to the build script rather than attempting to
+    /// extract a non-functional stub.
     #[test]
-    fn ensure_python_env_extracts_files() {
-        ensure_python_env().expect("ensure_python_env should not fail");
-
-        // Version marker must exist
-        assert!(marker_path().exists(), "version marker file not found");
-
-        // python.exe placeholder must exist
-        assert!(python_exe().exists(), "python.exe not found in extracted env");
-
-        // mtk.py must be extracted
-        assert!(mtk_py_path().exists(), "mtk.py not found in extracted env");
+    fn ensure_python_env_rejects_placeholder() {
+        let result = ensure_python_env();
+        assert!(result.is_err(), "expected error for placeholder asset");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("placeholder"),
+            "error should mention 'placeholder', got: {err_msg}"
+        );
+        assert!(
+            err_msg.contains("build_py312_zip"),
+            "error should reference the build script, got: {err_msg}"
+        );
     }
 
-    /// Calling ensure_python_env twice must be idempotent.
+    /// Calling ensure_python_env twice with a placeholder must return the same
+    /// error both times (idempotent failure).
     #[test]
-    fn ensure_python_env_idempotent() {
-        ensure_python_env().expect("first call");
-        ensure_python_env().expect("second call should be a no-op");
+    fn ensure_python_env_placeholder_idempotent() {
+        let first  = ensure_python_env();
+        let second = ensure_python_env();
+        assert!(first.is_err(),  "first call should error on placeholder");
+        assert!(second.is_err(), "second call should also error on placeholder");
+        // Both errors should be PythonEnv variants
+        assert!(matches!(first.unwrap_err(),  Error::PythonEnv(_)));
+        assert!(matches!(second.unwrap_err(), Error::PythonEnv(_)));
     }
 
     /// Verify that py_dir() is a subdirectory of the temp base.
@@ -70,6 +80,23 @@ mod python_runner_tests {
         assert!(
             dir_str.contains("python312"),
             "py_dir should end with python312, got {dir_str}"
+        );
+    }
+
+    /// Path helpers must return plausible values regardless of platform.
+    #[test]
+    fn path_helpers_return_expected_components() {
+        let exe = python_exe();
+        assert!(
+            exe.to_string_lossy().contains("python312"),
+            "python_exe() should contain 'python312', got: {}",
+            exe.display()
+        );
+        let mtk = mtk_py_path();
+        assert!(
+            mtk.file_name().map(|n| n == "mtk.py").unwrap_or(false),
+            "mtk_py_path() should end with 'mtk.py', got: {}",
+            mtk.display()
         );
     }
 }

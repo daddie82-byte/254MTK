@@ -1,0 +1,73 @@
+name: Check assets and documentation
+
+on:
+  push:
+    branches: ["main", "copilot/**"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  check-placeholder-asset:
+    name: Verify placeholder asset and docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check placeholder zip is present
+        run: |
+          ZIP=crates/flashtool-mtk/resources/py/py312-win64.zip
+          if [ ! -f "$ZIP" ]; then
+            echo "ERROR: $ZIP is missing."
+            echo "The repository must always contain a placeholder zip so that"
+            echo "'cargo build' works without the real runtime."
+            echo ""
+            echo "To restore it, run the build script locally and commit only"
+            echo "the small placeholder (not the real runtime)."
+            exit 1
+          fi
+          SIZE=$(stat -c%s "$ZIP")
+          echo "Placeholder zip present: $ZIP (${SIZE} bytes)"
+          # Guard against accidentally committing the real (large) zip.
+          MAX_PLACEHOLDER_BYTES=102400  # 100 KB
+          if [ "$SIZE" -gt "$MAX_PLACEHOLDER_BYTES" ]; then
+            echo ""
+            echo "ERROR: $ZIP is ${SIZE} bytes, which exceeds the placeholder"
+            echo "maximum of ${MAX_PLACEHOLDER_BYTES} bytes."
+            echo "Do NOT commit the real Python runtime zip to git."
+            echo "See scripts/README.md for the correct workflow."
+            exit 1
+          fi
+
+      - name: Check README documents the build script
+        run: |
+          README=README.md
+          if ! grep -q "build_py312_zip" "$README"; then
+            echo "ERROR: $README does not mention 'build_py312_zip'."
+            echo "The top-level README must describe how to generate the"
+            echo "Python runtime zip using scripts/build_py312_zip.ps1."
+            exit 1
+          fi
+          echo "README.md references build_py312_zip: OK"
+
+      - name: Check build script exists
+        run: |
+          SCRIPT=scripts/build_py312_zip.ps1
+          if [ ! -f "$SCRIPT" ]; then
+            echo "ERROR: $SCRIPT is missing."
+            exit 1
+          fi
+          echo "Build script present: $SCRIPT"
+
+      - name: Check scripts/README.md exists
+        run: |
+          DOC=scripts/README.md
+          if [ ! -f "$DOC" ]; then
+            echo "ERROR: $DOC is missing."
+            exit 1
+          fi
+          echo "scripts/README.md present: $DOC"

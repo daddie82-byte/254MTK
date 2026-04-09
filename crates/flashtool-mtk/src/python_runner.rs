@@ -4,6 +4,15 @@
 //! `%TEMP%\flashtool\pyenv\python312\` (Windows) or
 //! `/tmp/flashtool/pyenv/python312/` (other platforms – dev/test only).
 //! A version-marker file prevents repeated extraction.
+//!
+//! The repository ships a small **placeholder** zip that allows `cargo build`
+//! to succeed without committing the full Python runtime (~15 MB).  Before
+//! running any command, generate the real zip with:
+//!
+//! ```text
+//! .\scripts\build_py312_zip.ps1
+//! cargo build
+//! ```
 
 use std::fs;
 use std::io::{Cursor, Read, Write};
@@ -15,6 +24,10 @@ use flashtool_core::{Error, Result};
 // ── Embedded assets ──────────────────────────────────────────────────────────
 
 /// Version string written to the marker file.  Bump when the asset changes.
+///
+/// A version string that contains `"placeholder"` is treated as a build-time
+/// sentinel: `ensure_python_env` will refuse to extract it and will instead
+/// return a helpful error pointing to `scripts/build_py312_zip.ps1`.
 const PY_ASSET_VERSION: &str = "py312-win64-placeholder-0.1.0";
 
 /// The compressed Python 3.12 environment zip, embedded at compile time.
@@ -68,6 +81,18 @@ pub(crate) fn marker_path() -> PathBuf {
 ///
 /// This is a no-op when the marker file exists and matches [`PY_ASSET_VERSION`].
 pub fn ensure_python_env() -> Result<()> {
+    // Detect the placeholder asset and return an actionable error rather than
+    // attempting to extract a non-functional stub.
+    if PY_ASSET_VERSION.contains("placeholder") {
+        return Err(Error::PythonEnv(
+            "bundled Python runtime is still a placeholder asset.\n\
+             Run `scripts/build_py312_zip.ps1` to generate \
+             `crates/flashtool-mtk/resources/py/py312-win64.zip`, \
+             then rebuild with `cargo build`."
+                .to_owned(),
+        ));
+    }
+
     let marker = marker_path();
 
     // Check if already extracted and current
