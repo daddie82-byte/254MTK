@@ -75,6 +75,69 @@ Before running any command you must generate the real zip locally.
 
 See [`scripts/README.md`](scripts/README.md) for full script usage and options.
 
+## USB / libusb driver setup (required for device commands)
+
+MTK devices communicate over USB, but Windows presents them differently
+depending on the device mode:
+
+| Mode | Windows driver | Port seen |
+|------|---------------|-----------|
+| **VCOM** (booted ROM) | CDC Serial / USB Serial | `COM3`, `COM4`, … |
+| **BROM** (power-off + Vol↓) | *none by default* → must install WinUSB | raw USB — no COM port |
+
+Most `flashtool` commands target **BROM mode**.  You must replace the default
+Windows driver with **WinUSB** using **Zadig** before the tool can open the
+device.
+
+### Step-by-step: install WinUSB via Zadig
+
+1. **Download Zadig** from <https://zadig.akeo.ie> (no install needed, portable `.exe`).
+
+2. **Enter BROM mode** on your device:
+   - Power the device **off** completely (remove battery if possible).
+   - Hold **Volume Down** (some devices: Vol↓ + Vol↑ simultaneously).
+   - Plug the USB cable into the PC while holding the button.
+   - The device should appear in Device Manager as **"MediaTek USB Port"** or
+     **"MTK Preloader"** (VID `0E8D`, PID `0003` or `2000`).
+
+3. **Open Zadig** and choose **Options → List All Devices**.
+
+4. In the device drop-down, select the MediaTek entry (e.g.
+   `MTK USB Port (Interface 0)` or `MediaTek Preloader`).
+   Confirm the USB ID shows `0E8D:0003` or `0E8D:2000`.
+
+5. Set the driver on the **right** side to **WinUSB (v6.1.xxxx.xxxxx)**.
+
+6. Click **Replace Driver** (or **Install Driver**) and wait for Zadig to finish.
+
+7. **Verify**: open Device Manager → **Universal Serial Bus devices** → you
+   should see the MediaTek entry listed there (not under Ports/COM/LPT).
+
+> **Reverting**: to restore the original driver, open Device Manager, right-click
+> the device → *Update driver → Browse my computer → Let me pick* → choose
+> **USB Serial Device (CDC)**.
+
+### After installing the driver
+
+With WinUSB installed the device has no COM port number.  Pass the device
+by specifying the default port placeholder — `mtk.py` resolves the USB
+device directly via libusb:
+
+```powershell
+flashtool detect --port COM3         # still required by the CLI flag; mtk.py
+flashtool read-info --port COM3      # opens the USB device, not the COM port
+```
+
+> On **Linux** no driver swap is needed.  Add a udev rule so you can access
+> the device without root:
+> ```bash
+> echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", MODE="0666"' \
+>   | sudo tee /etc/udev/rules.d/99-mtk.rules
+> sudo udevadm control --reload-rules && sudo udevadm trigger
+> ```
+> Pass the Linux serial device with `--port /dev/ttyUSB0` (VCOM) or omit
+> the port flag to let mtk.py auto-discover the USB device.
+
 ## CLI commands
 
 ```

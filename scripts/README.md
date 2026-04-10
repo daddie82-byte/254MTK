@@ -93,3 +93,25 @@ py312-win64.zip
 
 The Rust extractor unzips this into `%TEMP%\flashtool\pyenv\` so that
 `python.exe` is available at `%TEMP%\flashtool\pyenv\python312\python.exe`.
+
+---
+
+## USB driver setup (Windows — required before device commands)
+
+`flashtool detect` and `flashtool read-info` talk to the MTK device through
+`mtk.py`, which uses **libusb** for low-level USB access in BROM mode.
+Windows does not install a compatible driver automatically, so you must
+replace it once using **Zadig**.
+
+### Quick guide
+
+1. Download **Zadig** from <https://zadig.akeo.ie>.
+2. Put the device in **BROM mode**: power off → hold Vol↓ → plug USB.
+3. Open Zadig → **Options → List All Devices**.
+4. Select `MTK USB Port` or `MediaTek Preloader` (USB ID `0E8D:0003` or `0E8D:2000`).
+5. Set the target driver to **WinUSB** → click **Replace Driver**.
+6. After success the entry moves to *Universal Serial Bus devices* in Device
+   Manager (no COM port number).
+
+See the main [`README.md`](../README.md#usb--libusb-driver-setup-required-for-device-commands)
+for the full step-by-step, Linux udev instructions, and reverting the driver.
