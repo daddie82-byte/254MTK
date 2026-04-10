@@ -1,0 +1,18 @@
+/target
+Cargo.lock
+
+# Build staging directory used by scripts/build_py312_zip.ps1
+/build/
+
+# Generated Python runtime zip (DO NOT COMMIT).
+# The repository ships a small placeholder at this path so that `cargo build`
+# works without the real runtime.  After running `scripts\build_py312_zip.ps1`
+# the file will be replaced by the real ~15 MB zip.  Prevent accidental
+# commits by running:
+#
+#   git update-index --assume-unchanged crates/flashtool-mtk/resources/py/py312-win64.zip
+#
+# Note: because the placeholder is already tracked by git, this .gitignore
+# entry guards against adding a second untracked copy; for the tracked file
+# you must use `git update-index --assume-unchanged` as shown above.
+crates/flashtool-mtk/resources/py/py312-win64.zip
